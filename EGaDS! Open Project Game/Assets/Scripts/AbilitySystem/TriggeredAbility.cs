@@ -19,17 +19,17 @@ public abstract class TriggeredAbility : Ability
     /// Returns true while the user 
     /// holds down the key corresponding to this ability.
     /// </summary>
-    protected bool GetKey() => Input.GetKey(GetKeyCode());
+    protected bool GetKey() => (!Input.GetKey(KeyCode.LeftShift) && Input.GetKey(GetKeyCode()));
 
     /// <summary>
     /// Returns true during the frame the user 
     /// starts pressing down the key corresponding to this ability.
     /// </summary>
-    protected bool GetKeyDown() => Input.GetKeyDown(GetKeyCode());
+    protected bool GetKeyDown() => (!Input.GetKey(KeyCode.LeftShift) && Input.GetKeyDown(GetKeyCode()));
 
     /// <summary>
     /// Returns true during the frame the user
     /// releases the key corresponding to this ability.
     /// </summary>
-    protected bool GetKeyUp() => Input.GetKeyUp(GetKeyCode());
+    protected bool GetKeyUp() => (!Input.GetKey(KeyCode.LeftShift) && Input.GetKeyUp(GetKeyCode()));
 }

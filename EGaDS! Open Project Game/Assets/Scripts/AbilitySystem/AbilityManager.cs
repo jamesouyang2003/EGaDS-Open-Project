@@ -1,9 +1,18 @@
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using UnityEngine.Events;
 
 public class AbilityManager : MonoBehaviour
 {
+    // Variables for ability pick up
+    [SerializeField] private float _pickUpRadius;
+    [SerializeField] private GameObject _pickUpIndicator;
+    [SerializeField] private float _pickUpIndicatorOffset = 1f;
+    [SerializeField] private LayerMask _abilityLayer;
+    private List<Collider2D> _abilityCollisions = new List<Collider2D>(); // list of abilities within pickup range
+    private ContactFilter2D _pickUpFilter = new ContactFilter2D(); // filter for picking up abilities
+
     /// <summary>
     /// Holds the keycodes that activate each ability slot the player holds
     /// </summary>
@@ -18,6 +27,18 @@ public class AbilityManager : MonoBehaviour
     public static readonly KeyCode[] PASSIVE_ABILITY_KEY_CODES = {
         KeyCode.U, KeyCode.I, KeyCode.O, KeyCode.P,
     };
+
+    /// <summary>
+    /// Unity event which is invoked whenever an ability is added. 
+    /// Passes the ability added and the hotkey number of said ability.
+    /// </summary>
+    [HideInInspector] public UnityEvent<Ability, int> AbilityAddedEvent;
+
+    /// <summary>
+    /// Unity event which is invoked whenever an ability is removed. 
+    /// Passes the ability removed and the hotkey number of said ability.
+    /// </summary>
+    [HideInInspector] public UnityEvent<Ability, int> AbilityRemovedEvent;
 
     private List<TriggeredAbility> _triggeredAbilities = new List<TriggeredAbility>();
     private List<PassiveAbility> _passiveAbilities = new List<PassiveAbility>();
@@ -104,11 +125,20 @@ public class AbilityManager : MonoBehaviour
         return focusUnacquired;
     }
 
+    void Awake()
+    {
+        AbilityAddedEvent = new UnityEvent<Ability, int>();
+        AbilityRemovedEvent = new UnityEvent<Ability, int>();
+    }
 
     // Start is called before the first frame update
     void Start()
     {
         _player = new PlayerComponents(gameObject);
+
+        _pickUpFilter.layerMask = _abilityLayer;
+        _pickUpFilter.useLayerMask = true;
+        _pickUpIndicator.SetActive(false);
     }
 
     // Update is called once per frame
@@ -124,6 +154,42 @@ public class AbilityManager : MonoBehaviour
         }
         else // otherwise only call Update() of focus
             _focus.AbilityUpdate(_player);
+
+        // determine closest ability within pick up range and highlight it
+        AbilityHolder closestAbility = null;
+        Physics2D.OverlapCircle(transform.position, _pickUpRadius, _pickUpFilter, _abilityCollisions);
+        if (_abilityCollisions.Count > 0)
+        {
+            Collider2D closestObj = _abilityCollisions[0];
+            float shortestDistance = Vector2.Distance(transform.position, closestObj.gameObject.transform.position);
+            foreach (Collider2D collider in _abilityCollisions)
+            {
+                Vector2 currPos = collider.gameObject.transform.position;
+                float currDistance = Vector2.Distance(transform.position, currPos);
+                if (currDistance < shortestDistance)
+                {
+                    shortestDistance = currDistance;
+                    closestObj = collider;
+                }
+            }
+
+            closestAbility = closestObj.gameObject.GetComponent<AbilityHolder>();
+            if (closestAbility)
+            {
+                _pickUpIndicator.SetActive(true);
+                _pickUpIndicator.transform.parent = null;
+                Vector2 newPos = closestObj.gameObject.transform.position;
+                newPos.y += _pickUpIndicatorOffset;
+                _pickUpIndicator.transform.position = newPos;
+            }
+        }
+        else
+        {
+            _pickUpIndicator.transform.parent = transform;
+            _pickUpIndicator.SetActive(false);
+        }
+
+        // listen for input from hotkeys to see if an ability is picked up or dropped
     }
 
     // called once every fixed frame-rate frame defined by physics engine
@@ -236,4 +302,11 @@ public class AbilityManager : MonoBehaviour
 
     /// <summary>Alias of <c>SetAbilityCount(true, count)</c></summary>
     public List<PassiveAbility> SetPassiveAbilityCount(int count) => SetAbilityCount(_passiveAbilities, count);
+
+    private void OnDrawGizmos()
+    {
+        // Draw pick up range
+        Gizmos.color = Color.blue;
+        Gizmos.DrawWireSphere(transform.position, _pickUpRadius);
+    }
 }

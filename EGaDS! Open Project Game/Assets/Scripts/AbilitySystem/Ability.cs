@@ -10,6 +10,17 @@ public abstract class Ability : ScriptableObject
     [SerializeField] private float _jumpHeightAddend = 0.0f;
     [SerializeField] private int _airJumpAddend = 0;
 
+    [SerializeField] private Sprite _abilitySprite;
+
+    /// <summary>
+    /// The sprite which represents this ability.
+    /// </summary>
+    public Sprite AbilitySprite
+    {
+        get => _abilitySprite;
+        protected set { _abilitySprite = value; }
+    }
+
     /// <summary>
     /// The slot index this ability is held in.
     /// If equal to -1, then the ability is not in a slot
