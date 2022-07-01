@@ -23,12 +23,12 @@ public class FloorManager : MonoBehaviour
     /// <summary>
     /// The row of the room the player is currently in
     /// </summary>
-    private int CurrentRoomRow = 0;
+    public int CurrentRoomRow { get; private set; } = 0;
 
     /// <summary>
     /// The column of the room the player is currently in
     /// </summary>
-    private int CurrentRoomCol = 0;
+    public int CurrentRoomCol { get; private set; } = 0;
 
     /// <summary>
     /// The room the player is currently in
