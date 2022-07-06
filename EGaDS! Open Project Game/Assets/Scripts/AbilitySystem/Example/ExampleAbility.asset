@@ -17,6 +17,7 @@ MonoBehaviour:
   _wallSlideMultiplier: 1
   _jumpHeightAddend: 0
   _airJumpAddend: 0
+  _abilitySprite: {fileID: 2747690628134850419, guid: ac0468d92e8de214a8c0efb059c5896b, type: 3}
   _riseHeight: 8
   _riseSpeed: 5
   _cooldownTime: 0.5

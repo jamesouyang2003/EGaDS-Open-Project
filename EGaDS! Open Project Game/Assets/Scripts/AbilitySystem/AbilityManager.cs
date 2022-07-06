@@ -10,6 +10,7 @@ public class AbilityManager : MonoBehaviour
     [SerializeField] private GameObject _pickUpIndicator;
     [SerializeField] private float _pickUpIndicatorOffset = 1f;
     [SerializeField] private LayerMask _abilityLayer;
+    [SerializeField] private GameObject AbilityHolderObj;
     private List<Collider2D> _abilityCollisions = new List<Collider2D>(); // list of abilities within pickup range
     private ContactFilter2D _pickUpFilter = new ContactFilter2D(); // filter for picking up abilities
 
@@ -155,41 +156,17 @@ public class AbilityManager : MonoBehaviour
         else // otherwise only call Update() of focus
             _focus.AbilityUpdate(_player);
 
+
+        // ==== Ability pick up logic ====
+
         // determine closest ability within pick up range and highlight it
-        AbilityHolder closestAbility = null;
-        Physics2D.OverlapCircle(transform.position, _pickUpRadius, _pickUpFilter, _abilityCollisions);
-        if (_abilityCollisions.Count > 0)
-        {
-            Collider2D closestObj = _abilityCollisions[0];
-            float shortestDistance = Vector2.Distance(transform.position, closestObj.gameObject.transform.position);
-            foreach (Collider2D collider in _abilityCollisions)
-            {
-                Vector2 currPos = collider.gameObject.transform.position;
-                float currDistance = Vector2.Distance(transform.position, currPos);
-                if (currDistance < shortestDistance)
-                {
-                    shortestDistance = currDistance;
-                    closestObj = collider;
-                }
-            }
+        AbilityHolder closestAbility = getClosestAbility();
 
-            closestAbility = closestObj.gameObject.GetComponent<AbilityHolder>();
-            if (closestAbility)
-            {
-                _pickUpIndicator.SetActive(true);
-                _pickUpIndicator.transform.parent = null;
-                Vector2 newPos = closestObj.gameObject.transform.position;
-                newPos.y += _pickUpIndicatorOffset;
-                _pickUpIndicator.transform.position = newPos;
-            }
-        }
-        else
-        {
-            _pickUpIndicator.transform.parent = transform;
-            _pickUpIndicator.SetActive(false);
-        }
+        // listen for ability pick up
+        listenForPickup(closestAbility);
 
-        // listen for input from hotkeys to see if an ability is picked up or dropped
+        // listen for ability drop
+        listenForAbilityDrop();
     }
 
     // called once every fixed frame-rate frame defined by physics engine
@@ -308,5 +285,180 @@ public class AbilityManager : MonoBehaviour
         // Draw pick up range
         Gizmos.color = Color.blue;
         Gizmos.DrawWireSphere(transform.position, _pickUpRadius);
+    }
+
+    private AbilityHolder getClosestAbility()
+    {
+        // determine closest ability within pick up range and highlight it
+        AbilityHolder closestAbility = null;
+        Physics2D.OverlapCircle(transform.position, _pickUpRadius, _pickUpFilter, _abilityCollisions);
+        if (_abilityCollisions.Count > 0)
+        {
+            Collider2D closestObj = _abilityCollisions[0];
+            float shortestDistance = Vector2.Distance(transform.position, closestObj.gameObject.transform.position);
+            foreach (Collider2D collider in _abilityCollisions)
+            {
+                Vector2 currPos = collider.gameObject.transform.position;
+                float currDistance = Vector2.Distance(transform.position, currPos);
+                if (currDistance < shortestDistance)
+                {
+                    shortestDistance = currDistance;
+                    closestObj = collider;
+                }
+            }
+
+            closestAbility = closestObj.gameObject.GetComponent<AbilityHolder>();
+            if (closestAbility)
+            {
+                _pickUpIndicator.SetActive(true);
+                _pickUpIndicator.transform.parent = null;
+                Vector2 newPos = closestObj.gameObject.transform.position;
+                newPos.y += _pickUpIndicatorOffset;
+                _pickUpIndicator.transform.position = newPos;
+            }
+        }
+        else
+        {
+            _pickUpIndicator.transform.parent = transform;
+            _pickUpIndicator.SetActive(false);
+        }
+
+        return closestAbility;
+    }
+
+    private void listenForPickup(AbilityHolder closestAbility)
+    {
+        if (!closestAbility)
+            return;
+
+        bool isTriggered = false;
+        int index = -1;
+
+        // triggered abilities
+        if (Input.GetKeyDown(TRIGGERED_ABILITY_KEY_CODES[0]))
+        {
+            isTriggered = true;
+            index = 0;
+        }
+        else if (Input.GetKeyDown(TRIGGERED_ABILITY_KEY_CODES[1]))
+        {
+            isTriggered = true;
+            index = 1;
+        }
+        else if (Input.GetKeyDown(TRIGGERED_ABILITY_KEY_CODES[2]))
+        {
+            isTriggered = true;
+            index = 2;
+        }
+        else if (Input.GetKeyDown(TRIGGERED_ABILITY_KEY_CODES[3]))
+        {
+            isTriggered = true;
+            index = 3;
+        }
+        // passive abilities
+        else if (Input.GetKeyDown(PASSIVE_ABILITY_KEY_CODES[0]))
+        {
+            isTriggered = false;
+            index = 0;
+        }
+        else if (Input.GetKeyDown(PASSIVE_ABILITY_KEY_CODES[1]))
+        {
+            isTriggered = false;
+            index = 1;
+        }
+        else if (Input.GetKeyDown(PASSIVE_ABILITY_KEY_CODES[2]))
+        {
+            isTriggered = false;
+            index = 2;
+        }
+        else if (Input.GetKeyDown(PASSIVE_ABILITY_KEY_CODES[3]))
+        {
+            isTriggered = false;
+            index = 3;
+        }
+
+        if (index >= 0)
+        {
+            Ability pickedUpAbility = closestAbility?.PickUpAbility();
+            if (isTriggered)
+            {
+                if (pickedUpAbility is TriggeredAbility)
+                {
+                    if (AddAbility(closestAbility.PickUpAbility(), index))
+                    {
+                        Destroy(closestAbility.gameObject);
+                    }
+                }
+            }
+            else
+            {
+                if (pickedUpAbility is PassiveAbility)
+                {
+                    if (AddAbility(closestAbility.PickUpAbility(), index))
+                    {
+                        Destroy(closestAbility.gameObject);
+                    }
+                }
+            }
+        }
+    }
+
+    private void listenForAbilityDrop()
+    {
+        bool isTriggered = false;
+        int index = -1;
+
+        if (Input.GetKeyDown(TRIGGERED_ABILITY_KEY_CODES[0]) && Input.GetKey(KeyCode.LeftShift))
+        {
+            isTriggered = true;
+            index = 0;
+        }
+        else if (Input.GetKeyDown(TRIGGERED_ABILITY_KEY_CODES[1]) && Input.GetKey(KeyCode.LeftShift))
+        {
+            isTriggered = true;
+            index = 1;
+        }
+        else if (Input.GetKeyDown(TRIGGERED_ABILITY_KEY_CODES[2]) && Input.GetKey(KeyCode.LeftShift))
+        {
+            isTriggered = true;
+            index = 2;
+        }
+        else if (Input.GetKeyDown(TRIGGERED_ABILITY_KEY_CODES[3]) && Input.GetKey(KeyCode.LeftShift))
+        {
+            isTriggered = true;
+            index = 3;
+        }
+        // passive abilities
+        else if (Input.GetKeyDown(PASSIVE_ABILITY_KEY_CODES[0]) && Input.GetKey(KeyCode.LeftShift))
+        {
+            isTriggered = false;
+            index = 0;
+        }
+        else if (Input.GetKeyDown(PASSIVE_ABILITY_KEY_CODES[1]) && Input.GetKey(KeyCode.LeftShift))
+        {
+            isTriggered = false;
+            index = 1;
+        }
+        else if (Input.GetKeyDown(PASSIVE_ABILITY_KEY_CODES[2]) && Input.GetKey(KeyCode.LeftShift))
+        {
+            isTriggered = false;
+            index = 2;
+        }
+        else if (Input.GetKeyDown(PASSIVE_ABILITY_KEY_CODES[3]) && Input.GetKey(KeyCode.LeftShift))
+        {
+            isTriggered = false;
+            index = 3;
+        }
+
+        if (index >= 0)
+        {
+            Ability removedAbility = (isTriggered) ? RemoveTriggeredAbility(index) : RemovePassiveAbility(index);
+            if (removedAbility)
+            {
+                GameObject newAbilityObject = Instantiate(AbilityHolderObj, transform.position, Quaternion.identity);
+                AbilityHolder newAbilityHolder = newAbilityObject.GetComponent<AbilityHolder>();
+                newAbilityHolder.DropAbility(removedAbility);
+            }
+        }
     }
 }

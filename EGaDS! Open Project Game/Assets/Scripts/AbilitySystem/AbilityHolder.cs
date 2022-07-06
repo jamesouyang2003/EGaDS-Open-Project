@@ -6,12 +6,12 @@ using UnityEngine;
 public class AbilityHolder : MonoBehaviour
 {
     private SpriteRenderer _spriteRenderer;
-    private Ability _ability;
+    [SerializeField] private Ability _ability;
 
-    // Start is called before the first frame update
     void Start()
     {
         _spriteRenderer = GetComponent<SpriteRenderer>();
+        _spriteRenderer.sprite = _ability.AbilitySprite;
     }
 
     /// <summary>
@@ -23,7 +23,6 @@ public class AbilityHolder : MonoBehaviour
     public void DropAbility(Ability ability)
     {
         _ability = ability;
-        _spriteRenderer.sprite = ability.AbilitySprite;
     }
 
     /// <summary>
