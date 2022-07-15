@@ -91,8 +91,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _roomType: 0
-  _exitLocations: 0
-  _leftExitPosition: 10
+  _exitSides: 0
+  _leftExitPosition: 6.93
   _rightExitPosition: 10
   _topExitPosition: 10
   _bottomExitPosition: 10
