@@ -4,16 +4,20 @@ using UnityEngine;
 
 public class FloorManager : MonoBehaviour
 {
-    // width and height determine where exit triggers are (room is centered at 0,0)
-    [SerializeField] private float _roomWidth;
-    [SerializeField] private float _roomHeight;
-
     [SerializeField] private GameObject _fadeGameObject;
+
+    [SerializeField, Range(1, 100)] private int _roomCount = 5;
+    [SerializeField, Range(1, 20)] private int _floorSize = 7;
+    [SerializeField, Range(0, 1)] private float _proportionWallsRemoved = 0.5f;
+
+    public int RoomCount => _roomCount;
+    public int FloorSize => _floorSize;
+    public float ProportionWallsRemoved => _proportionWallsRemoved;
 
     /// <summary>
     /// The current floor number. The first floor is 1, second floor is 2, etc.
     /// </summary>
-    public int CurrentFloor { get; private set; }
+    public int CurrentFloor { get; private set; } = 1;
 
     /// <summary>
     /// The rooms in the current floor

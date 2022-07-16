@@ -1,12 +1,12 @@
 using UnityEngine;
-
+using UnityEditor;
 
 
 public class Room : MonoBehaviour
 {
     public enum RoomTypes { Regular, Start, End }
 
-    const int ROOM_SIZE = 20; // width and height of rooms    
+    public const int ROOM_SIZE = 20; // width and height of rooms    
 
     [SerializeField]
     private RoomTypes _roomType;
@@ -16,15 +16,15 @@ public class Room : MonoBehaviour
     [Header("Exits")]
 
     [SerializeField, EnumMask(typeof(RoomExitSide))] 
-    private RoomExitSide _exitSides;
+    protected RoomExitSide _exitSides;
 
-    [SerializeField, Range(0, ROOM_SIZE), EnumMaskConditional("_exitLocations", (int)RoomExitSide.Left)]
+    [SerializeField, EnumMaskConditional("_exitSides", (int)RoomExitSide.Left), Range(0, ROOM_SIZE)]
     private float _leftExitPosition = ROOM_SIZE/2;
-    [SerializeField, Range(0, ROOM_SIZE), EnumMaskConditional("_exitLocations", (int)RoomExitSide.Right)]    
+    [SerializeField, EnumMaskConditional("_exitSides", (int)RoomExitSide.Right), Range(0, ROOM_SIZE)]    
     private float _rightExitPosition = ROOM_SIZE/2;
-    [SerializeField, Range(0, ROOM_SIZE), EnumMaskConditional("_exitLocations", (int)RoomExitSide.Top)]      
+    [SerializeField, EnumMaskConditional("_exitSides", (int)RoomExitSide.Top), Range(0, ROOM_SIZE)]      
     private float _topExitPosition = ROOM_SIZE/2;
-    [SerializeField, Range(0, ROOM_SIZE), EnumMaskConditional("_exitLocations", (int)RoomExitSide.Bottom)]   
+    [SerializeField, EnumMaskConditional("_exitSides", (int)RoomExitSide.Bottom), Range(0, ROOM_SIZE)]   
     private float _bottomExitPosition = ROOM_SIZE/2;
 
     public RoomTypes RoomType => _roomType;
@@ -55,17 +55,23 @@ public class Room : MonoBehaviour
         for (int i = 0; i < 4; i++) 
         {
             // draw side
-            Gizmos.color = _exitSides.HasFlag((RoomExitSide)(1<<i)) ? Color.green : Color.red;
-            Vector2 center = new Vector2(dx[i], dy[i]) * ROOM_SIZE/2;
+            bool isExit = _exitSides.HasFlag((RoomExitSide)(1<<i));
+            // Gizmos.color = _exitSides.HasFlag((RoomExitSide)(1<<i)) ? Color.green : Color.red;
+            Handles.color = isExit ? Color.green : Color.red;
+            Vector2 center = transform.position + new Vector3(dx[i], dy[i]) * ROOM_SIZE/2;
             Vector2 cornerOffset = new Vector2(dy[i], dx[i]) * ROOM_SIZE/2;
-            Gizmos.DrawLine(center+cornerOffset, center-cornerOffset);
+            // Gizmos.DrawLine(center+cornerOffset, center-cornerOffset);
+            if (isExit) Handles.DrawDottedLine(center+cornerOffset, center-cornerOffset, Handles.lineThickness*2);
+            else Handles.DrawLine(center+cornerOffset, center-cornerOffset, Handles.lineThickness);
 
             // draw exit location
             if (_exitSides.HasFlag((RoomExitSide)(1<<i))) 
             {
-                Vector2 location = GetExitLocation((RoomExitSide)(1<<i));
+                Vector2 location = transform.position + (Vector3)GetExitLocation((RoomExitSide)(1<<i));
                 Vector2 offset = new Vector2(dx[i], dy[i]) * 0.5f;
-                Gizmos.DrawLine(location-offset, location+offset);
+                // Gizmos.DrawLine(location-offset, location+offset);
+                if (isExit) Handles.DrawDottedLine(location-offset, location+offset, Handles.lineThickness*2);
+                else Handles.DrawLine(location-offset, location+offset, Handles.lineThickness);
             }
         }
     }

@@ -26,7 +26,6 @@ public class EnumMaskConditionalDrawer : PropertyDrawer
     private bool ShouldShow(SerializedProperty property) 
     {
         var otherProp = property.serializedObject.FindProperty(Attribute.Field);
-        Debug.Log($"Should show: {otherProp.enumValueFlag | Attribute.Matcher}");
         return (otherProp.enumValueFlag & Attribute.Matcher) != 0;
     }
 
