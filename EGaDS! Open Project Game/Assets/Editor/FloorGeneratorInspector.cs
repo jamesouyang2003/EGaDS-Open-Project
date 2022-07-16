@@ -23,25 +23,27 @@ public class FloorGeneratorInspector : Editor
 
 		var floorManager = Selection.activeGameObject.GetComponent<FloorManager>();
 
+		// EditorGUI.PropertyField()
+		// Selection.activeGameObject.
+
 		if (GUILayout.Button(new GUIContent("Generate Floor", @"For testing. "
-			+ "Floor is regenerated at runtime. Please do not "
-			+ "commit any changes from clicking this button.")))
+			+ "Rooms created with this button aren't actually saved to the scene.")))
 		{
 			DeleteRooms(floorManager);
 
-			var floor = FloorGenerator.GenerateFloor(
+			var floor = new FloorGenerator(
 				floorManager.CurrentFloor, 
 				floorManager.RoomCount, 
 				floorManager.FloorSize, 
 				floorManager.ProportionWallsRemoved
-			);
+			).GenerateFloor();
 
 			for (int r = 0; r < floorManager.FloorSize; r++)
 				for (int c = 0; c < floorManager.FloorSize; c++)
 					if (floor[r][c] is not null)
 					{
 						var position = new Vector2(c-floorManager.FloorSize/2, -r+floorManager.FloorSize/2);
-						var room = Instantiate(floor[r][c], position * Room.ROOM_SIZE, Quaternion.identity, floorManager.transform);
+						var room = Instantiate(floor[r][c].gameObject, position * Room.ROOM_SIZE, Quaternion.identity, floorManager.transform);
 						room.name = $"Room [{r}, {c}]";
 						room.hideFlags = HideFlags.DontSave;
 						Undo.RegisterCreatedObjectUndo(room, room.name);

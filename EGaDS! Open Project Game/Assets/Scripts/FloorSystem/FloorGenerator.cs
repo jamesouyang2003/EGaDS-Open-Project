@@ -3,7 +3,7 @@ using System.Linq;
 using UnityEngine;
 using System;
 
-public static class FloorGenerator
+public class FloorGenerator
 { 
     // row col offsets for left, right, up, and down
     private static readonly int[] dr = {0, 0, -1, 1};
@@ -14,27 +14,7 @@ public static class FloorGenerator
         public readonly int R, C;
         public RoomStruct(int r, int c)
             => (R, C) = (r, c);
-
         public override string ToString() => $"{R}, {C}";
-
-        public bool IsValid(int floorSize) => R >= 0 && R < floorSize && C >= 0 && C < floorSize;
-
-        public List<RoomStruct> GetValidNeighbors(int floorSize)
-        {
-            var neighbors = new List<RoomStruct>();
-            for (int i = 0; i < 4; i++)
-            {
-                var neighbor = GetNeighbor(dr[i], dc[i]);
-                if (neighbor.IsValid(floorSize)) neighbors.Add(neighbor);
-            }
-            return neighbors;
-        }
-        public RoomStruct? RandomNeighbor(int floorSize)
-        {
-            var neighbors = GetValidNeighbors(floorSize);
-            if (!neighbors.Any()) return null;
-            return neighbors.RandomElement();
-        }
         public RoomStruct GetNeighbor(int dr, int dc) => new RoomStruct(R+dr, C+dc);
     }
     private struct WallStruct
@@ -45,9 +25,61 @@ public static class FloorGenerator
             if (room1.R < room2.R || room1.C < room2.C) (Room1, Room2) = (room1, room2);
             else (Room1, Room2) = (room2, room1);
         }
-
         public override string ToString() => $"[[{Room1}, {Room2}]]";
     }
+
+    private readonly int _roomCount;
+    private readonly int _floorSize;
+    private readonly float _proportionWallsRemoved;
+
+    private readonly List<Room>[] _roomPrefabs;
+    private readonly List<Room>[] _startRoomPrefabs;
+    private readonly List<Room>[] _finalRoomPrefabs;
+
+    public FloorGenerator(int floorNumber, int roomCount, int floorSize, float proportionWallsRemoved)
+    {
+        if (roomCount <= 0 || floorSize <= 0)
+            throw new ArgumentOutOfRangeException("Room count and floor size must be greater than 0");
+        if (roomCount > floorSize*floorSize) 
+            throw new ArgumentException("Room count cannot be greater than floor size squared");
+        if (proportionWallsRemoved < 0 || proportionWallsRemoved > 1)
+            throw new ArgumentOutOfRangeException("Proportion walls removed must be between 0 and 1");
+
+        this._roomCount = roomCount;
+        this._floorSize = floorSize;
+        this._proportionWallsRemoved = proportionWallsRemoved;
+
+        _roomPrefabs = LoadRooms($"Rooms/Floor{floorNumber}");
+        _startRoomPrefabs = LoadRooms($"Rooms/Floor{floorNumber}/StartRoom");
+        _finalRoomPrefabs = LoadRooms($"Rooms/Floor{floorNumber}/FinalRoom");
+    }
+
+    private static T RandomElement<T>(ICollection<T> collection)
+    {
+        if (!collection.Any()) throw new InvalidOperationException("Collection is empty");
+        return collection.ElementAt(UnityEngine.Random.Range(0, collection.Count));
+    }
+
+    private bool IsValid(RoomStruct room) 
+        => room.R >= 0 && room.R < _floorSize && room.C >= 0 && room.C < _floorSize;
+
+    private List<RoomStruct> GetValidNeighbors(RoomStruct room)
+    {
+        var neighbors = new List<RoomStruct>();
+        for (int i = 0; i < 4; i++)
+        {
+            var neighbor = room.GetNeighbor(dr[i], dc[i]);
+            if (IsValid(neighbor)) neighbors.Add(neighbor);
+        }
+        return neighbors;
+    }
+    private RoomStruct? GetRandomNeighbor(RoomStruct room)
+    {
+        var neighbors = GetValidNeighbors(room);
+        if (!neighbors.Any()) return null;
+        return RandomElement(neighbors);
+    }
+
 
     /// <summary>
     /// Loads the room prefabs in a path in the Resources folder into
@@ -72,11 +104,9 @@ public static class FloorGenerator
         for (int i = 0; i < rooms.Length; i++)
             if (!rooms[i].Any())
             {
-                // var prefab = Resources.Load<GameObject>(DEFAULT_PREFAB); 
                 var prefab = new GameObject();
                 prefab.hideFlags = HideFlags.HideAndDontSave;
                 var room = prefab.AddComponent<Room>();
-                // var room = prefab.GetComponent<DefaultRoom>();
                 room.ExitSides = (RoomExitSide)i;
                 rooms[i].Add(room);
             }
@@ -84,39 +114,24 @@ public static class FloorGenerator
         return rooms;
     }
 
-    private static T RandomElement<T>(this ICollection<T> collection)
+
+    public List<List<Room>> GenerateFloor()
     {
-        if (!collection.Any()) throw new InvalidOperationException("Collection is empty");
-        return collection.ElementAt(UnityEngine.Random.Range(0, collection.Count));
-    }
-
-    public static List<List<GameObject>> GenerateFloor
-    (int floorNumber, int roomCount, int floorSize, float proportionWallsRemoved)
-    {
-        if (roomCount <= 0 || floorSize <= 0)
-            throw new ArgumentOutOfRangeException("Room count and floor size must be greater than 0");
-
-        if (roomCount > floorSize*floorSize) 
-            throw new ArgumentException("Room count cannot be greater than floor size squared");
-        
-        if (proportionWallsRemoved < 0 || proportionWallsRemoved > 1)
-            throw new ArgumentOutOfRangeException("Proportion walls removed must be between 0 and 1");
-
         var rooms = new HashSet<RoomStruct>();
         var walls = new HashSet<WallStruct>();
 
         // add starting room
-        var startRoom = new RoomStruct(floorSize/2, floorSize/2);
+        var startRoom = new RoomStruct(_floorSize/2, _floorSize/2);
         rooms.Add(startRoom);
 
         // create spanning tree of rooms
-        while (rooms.Count < roomCount)
+        while (rooms.Count < _roomCount)
         {
             // choose a random room to branch off of
-            var room = rooms.RandomElement();
+            var room = RandomElement(rooms);
 
             // choose random of 4 sides for next room
-            var maybeNewRoom = room.RandomNeighbor(floorSize);
+            var maybeNewRoom = GetRandomNeighbor(room);
             if (maybeNewRoom is null) continue;
             var newRoom = (RoomStruct)maybeNewRoom;
 
@@ -126,7 +141,7 @@ public static class FloorGenerator
                 rooms.Add(newRoom);
                 
                 // Add walls between new room and existing neighboring rooms
-                foreach (var neighbor in newRoom.GetValidNeighbors(floorSize))
+                foreach (var neighbor in GetValidNeighbors(newRoom))
                     if (rooms.Contains(neighbor))
                         walls.Add(new WallStruct(newRoom, neighbor));
                 // remove wall between room and new room 
@@ -135,9 +150,9 @@ public static class FloorGenerator
         }
         
         // remove walls to add loops
-        int removeCount = (int)(walls.Count * proportionWallsRemoved);
+        int removeCount = (int)(walls.Count * _proportionWallsRemoved);
         for (int i = 0; i < removeCount; i++)
-            walls.Remove(walls.RandomElement());
+            walls.Remove(RandomElement(walls));
 
         // BFS to find farthest room from start room, and set it to final room
         var queue = new Queue<RoomStruct>();
@@ -147,7 +162,7 @@ public static class FloorGenerator
         while (queue.Any())
         {
             var room = queue.Dequeue();
-            foreach (var neighbor in room.GetValidNeighbors(floorSize))
+            foreach (var neighbor in GetValidNeighbors(room))
             {
                 if (rooms.Contains(neighbor) && !walls.Contains(new WallStruct(room, neighbor))
                  && !dist.ContainsKey(neighbor))
@@ -161,16 +176,11 @@ public static class FloorGenerator
         foreach (var (room, distance) in dist)
             if (distance > dist[finalRoom])
                 finalRoom = room;
-        
-        // load all prefabs for the floor
-        var possibleRooms = LoadRooms($"Rooms/Floor{floorNumber}");
-        var possibleStartRooms = LoadRooms($"Rooms/Floor{floorNumber}/StartRoom");
-        var possibleFinalRooms = LoadRooms($"Rooms/Floor{floorNumber}/FinalRoom");
 
         // generate floor
-        var floor = new List<List<GameObject>>(floorSize);
-        for (int i = 0; i < floorSize; i++)
-            floor.Add(new List<GameObject>(new GameObject[floorSize]));
+        var floor = new List<List<Room>>(_floorSize);
+        for (int i = 0; i < _floorSize; i++)
+            floor.Add(new List<Room>(new Room[_floorSize]));
 
         RoomExitSide GetRoomExitSide(RoomStruct room)
         {
@@ -185,19 +195,17 @@ public static class FloorGenerator
         }
 
         foreach (var room in rooms)
-            floor[room.R][room.C] = possibleRooms[(int)GetRoomExitSide(room)].RandomElement().gameObject;
+            floor[room.R][room.C] = RandomElement(_roomPrefabs[(int)GetRoomExitSide(room)]);
 
         // set start room
-        var start = possibleStartRooms[(int)GetRoomExitSide(startRoom)].RandomElement();
+        var start = RandomElement(_startRoomPrefabs[(int)GetRoomExitSide(startRoom)]);
         start.RoomType = Room.RoomTypes.Start;
-        floor[startRoom.R][startRoom.C] = start.gameObject;
-        // rooms.Remove(START_ROOM);
+        floor[startRoom.R][startRoom.C] = start;
 
         // set final room
-        var final = possibleFinalRooms[(int)GetRoomExitSide(finalRoom)].RandomElement();
+        var final = RandomElement(_finalRoomPrefabs[(int)GetRoomExitSide(finalRoom)]);
         final.RoomType = Room.RoomTypes.Final;
-        floor[finalRoom.R][finalRoom.C] = final.gameObject;
-        // rooms.Remove(finalRoom);
+        floor[finalRoom.R][finalRoom.C] = final;
 
         return floor;
     }
