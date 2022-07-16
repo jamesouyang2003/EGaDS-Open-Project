@@ -4,32 +4,28 @@ using UnityEditor;
 
 public class Room : MonoBehaviour
 {
-    public enum RoomTypes { Regular, Start, End }
+    public enum RoomTypes { Regular, Start, Final }
 
     public const int ROOM_SIZE = 20; // width and height of rooms    
 
-    [SerializeField]
-    private RoomTypes _roomType;
+    public RoomTypes RoomType;
 
     // [EnumMask(typeof(ExitLocation))]
 
     [Header("Exits")]
 
-    [SerializeField, EnumMask(typeof(RoomExitSide))] 
-    protected RoomExitSide _exitSides;
+    [EnumMask(typeof(RoomExitSide))] 
+    public RoomExitSide ExitSides;
 
-    [SerializeField, EnumMaskConditional("_exitSides", (int)RoomExitSide.Left), Range(0, ROOM_SIZE)]
+    [SerializeField, EnumMaskConditional("ExitSides", (int)RoomExitSide.Left), Range(0, ROOM_SIZE)]
     private float _leftExitPosition = ROOM_SIZE/2;
-    [SerializeField, EnumMaskConditional("_exitSides", (int)RoomExitSide.Right), Range(0, ROOM_SIZE)]    
+    [SerializeField, EnumMaskConditional("ExitSides", (int)RoomExitSide.Right), Range(0, ROOM_SIZE)]    
     private float _rightExitPosition = ROOM_SIZE/2;
-    [SerializeField, EnumMaskConditional("_exitSides", (int)RoomExitSide.Top), Range(0, ROOM_SIZE)]      
+    [SerializeField, EnumMaskConditional("ExitSides", (int)RoomExitSide.Top), Range(0, ROOM_SIZE)]      
     private float _topExitPosition = ROOM_SIZE/2;
-    [SerializeField, EnumMaskConditional("_exitSides", (int)RoomExitSide.Bottom), Range(0, ROOM_SIZE)]   
+    [SerializeField, EnumMaskConditional("ExitSides", (int)RoomExitSide.Bottom), Range(0, ROOM_SIZE)]   
     private float _bottomExitPosition = ROOM_SIZE/2;
 
-    public RoomTypes RoomType => _roomType;
-
-    public RoomExitSide ExitSides => _exitSides;
     public float LeftExitPosition => _leftExitPosition;
     public float RightExitPosition => _rightExitPosition;
     public float TopExitPosition => _topExitPosition;
@@ -55,7 +51,7 @@ public class Room : MonoBehaviour
         for (int i = 0; i < 4; i++) 
         {
             // draw side
-            bool isExit = _exitSides.HasFlag((RoomExitSide)(1<<i));
+            bool isExit = ExitSides.HasFlag((RoomExitSide)(1<<i));
             // Gizmos.color = _exitSides.HasFlag((RoomExitSide)(1<<i)) ? Color.green : Color.red;
             Handles.color = isExit ? Color.green : Color.red;
             Vector2 center = transform.position + new Vector3(dx[i], dy[i]) * ROOM_SIZE/2;
@@ -65,7 +61,7 @@ public class Room : MonoBehaviour
             else Handles.DrawLine(center+cornerOffset, center-cornerOffset, Handles.lineThickness);
 
             // draw exit location
-            if (_exitSides.HasFlag((RoomExitSide)(1<<i))) 
+            if (ExitSides.HasFlag((RoomExitSide)(1<<i))) 
             {
                 Vector2 location = transform.position + (Vector3)GetExitLocation((RoomExitSide)(1<<i));
                 Vector2 offset = new Vector2(dx[i], dy[i]) * 0.5f;
@@ -73,6 +69,12 @@ public class Room : MonoBehaviour
                 if (isExit) Handles.DrawDottedLine(location-offset, location+offset, Handles.lineThickness*2);
                 else Handles.DrawLine(location-offset, location+offset, Handles.lineThickness);
             }
+        }
+
+        if (RoomType == RoomTypes.Start || RoomType == RoomTypes.Final) 
+        {
+            Handles.color = Color.yellow;
+            Handles.DrawWireCube(transform.position, new Vector3(ROOM_SIZE+1, ROOM_SIZE+1));
         }
     }
 }

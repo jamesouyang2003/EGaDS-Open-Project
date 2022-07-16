@@ -75,7 +75,7 @@ public static class FloorGenerator
                 // var prefab = Resources.Load<GameObject>(DEFAULT_PREFAB); 
                 var prefab = new GameObject();
                 prefab.hideFlags = HideFlags.HideAndDontSave;
-                var room = prefab.AddComponent<DefaultRoom>();
+                var room = prefab.AddComponent<Room>();
                 // var room = prefab.GetComponent<DefaultRoom>();
                 room.ExitSides = (RoomExitSide)i;
                 rooms[i].Add(room);
@@ -142,18 +142,20 @@ public static class FloorGenerator
         // BFS to find farthest room from start room, and set it to final room
         var queue = new Queue<RoomStruct>();
         var dist = new Dictionary<RoomStruct, int>();
-        queue.Append(startRoom);
+        queue.Enqueue(startRoom);
         dist[startRoom] = 0;
         while (queue.Any())
         {
             var room = queue.Dequeue();
             foreach (var neighbor in room.GetValidNeighbors(floorSize))
+            {
                 if (rooms.Contains(neighbor) && !walls.Contains(new WallStruct(room, neighbor))
-                 && dist.ContainsKey(neighbor))
+                 && !dist.ContainsKey(neighbor))
                 {
                     dist[neighbor] = dist[room] + 1;
-                    queue.Append(neighbor);
+                    queue.Enqueue(neighbor);
                 }
+            }
         }
         RoomStruct finalRoom = startRoom;
         foreach (var (room, distance) in dist)
@@ -163,7 +165,7 @@ public static class FloorGenerator
         // load all prefabs for the floor
         var possibleRooms = LoadRooms($"Rooms/Floor{floorNumber}");
         var possibleStartRooms = LoadRooms($"Rooms/Floor{floorNumber}/StartRoom");
-        var possibleFinalRooms = LoadRooms($"Rooms/Floor{floorNumber}/StartRoom");
+        var possibleFinalRooms = LoadRooms($"Rooms/Floor{floorNumber}/FinalRoom");
 
         // generate floor
         var floor = new List<List<GameObject>>(floorSize);
@@ -183,16 +185,18 @@ public static class FloorGenerator
         }
 
         foreach (var room in rooms)
-            floor[room.R][room.C] = possibleStartRooms[(int)GetRoomExitSide(room)].RandomElement().gameObject;
+            floor[room.R][room.C] = possibleRooms[(int)GetRoomExitSide(room)].RandomElement().gameObject;
 
         // set start room
-        var exitSides = GetRoomExitSide(startRoom);
-        floor[startRoom.R][startRoom.C] = possibleStartRooms[(int)exitSides].RandomElement().gameObject;
+        var start = possibleStartRooms[(int)GetRoomExitSide(startRoom)].RandomElement();
+        start.RoomType = Room.RoomTypes.Start;
+        floor[startRoom.R][startRoom.C] = start.gameObject;
         // rooms.Remove(START_ROOM);
 
         // set final room
-        exitSides = GetRoomExitSide(finalRoom);
-        floor[finalRoom.R][finalRoom.C] = possibleStartRooms[(int)exitSides].RandomElement().gameObject;
+        var final = possibleFinalRooms[(int)GetRoomExitSide(finalRoom)].RandomElement();
+        final.RoomType = Room.RoomTypes.Final;
+        floor[finalRoom.R][finalRoom.C] = final.gameObject;
         // rooms.Remove(finalRoom);
 
         return floor;

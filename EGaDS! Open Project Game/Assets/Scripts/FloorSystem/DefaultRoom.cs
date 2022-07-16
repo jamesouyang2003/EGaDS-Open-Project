@@ -7,7 +7,13 @@ public class DefaultRoom : Room
 {
     new public RoomExitSide ExitSides 
     {
-        get => _exitSides;
-        set => _exitSides = value;
+        get => ExitSides;
+        set => ExitSides = value;
+    }
+
+    new public RoomTypes RoomType 
+    {
+        get => RoomType;
+        set => RoomType = value;
     }
 }
