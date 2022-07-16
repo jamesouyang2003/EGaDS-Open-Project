@@ -43,13 +43,14 @@ public class FloorGeneratorInspector : Editor
 						var position = new Vector2(c-floorManager.FloorSize/2, -r+floorManager.FloorSize/2);
 						var room = Instantiate(floor[r][c], position * Room.ROOM_SIZE, Quaternion.identity, floorManager.transform);
 						room.name = $"Room [{r}, {c}]";
+						room.hideFlags = HideFlags.DontSave;
 						Undo.RegisterCreatedObjectUndo(room, room.name);
 					}
-			EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
 		}
 		if (GUILayout.Button(new GUIContent("Delete Rooms")))
 		{
 			DeleteRooms(floorManager);
+			EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
 		}
 	}
 }
